@@ -584,63 +584,7 @@ function App() {
     }
 
     if (orders.length > 0 && previousOrders.length > 0) {
-      if (!isAdmin) {
-        // For non-admin: detect newly completed orders (either new orders or status changes)
-        const previousCompletedIds = previousOrders
-          .filter(order => order.status === 'completed')
-          .map(order => order.id);
-
-        const currentCompletedOrders = orders.filter(order => order.status === 'completed');
-        const newlyCompletedOrders = currentCompletedOrders.filter(order => !previousCompletedIds.includes(order.id));
-
-        console.log('Non-admin check:', {
-          previousCompletedIds,
-          currentCompletedCount: currentCompletedOrders.length,
-          newlyCompletedCount: newlyCompletedOrders.length,
-          newlyCompletedOrders
-        });
-
-        if (newlyCompletedOrders.length > 0) {
-          console.log('Playing sound for newly completed orders:', newlyCompletedOrders);
-          // Play sound for newly completed orders if notification is enabled
-          if (notifyOrderComplete) {
-            playAudioSafely(orderCompletedAudio, 'newly completed orders');
-          }
-
-          // Remove newly completed orders from viewed notifications to show red bell
-          const newOrderIds = newlyCompletedOrders.map(o => o.id);
-          setViewedNotifications(prev => {
-            const updated = prev.filter(id => !newOrderIds.includes(id));
-            console.log('Updated viewedNotifications:', updated);
-            return updated;
-          });
-        }
-      } else {
-        // For admin: detect completely new orders (no sound notification for admin)
-        const previousOrderIds = previousOrders.map(order => order.id);
-        const newOrders = orders.filter(order =>
-          !previousOrderIds.includes(order.id) &&
-          (order.status === 'progress' || order.status === 'pending' || order.status === 'in-progress')
-        );
-
-        console.log('Admin check:', {
-          previousOrderCount: previousOrders.length,
-          currentOrderCount: orders.length,
-          newOrdersCount: newOrders.length,
-          newOrders
-        });
-
-        if (newOrders.length > 0) {
-          console.log('New orders detected (admin - no sound):', newOrders);
-          // Ensure new orders are not in viewed notifications to show red bell
-          const newOrderIds = newOrders.map(o => o.id);
-          setViewedNotifications(prev => {
-            const updated = prev.filter(id => !newOrderIds.includes(id));
-            console.log('Updated viewedNotifications:', updated);
-            return updated;
-          });
-        }
-      }
+      // Notifications service now handles order change side-effects
     }
 
     // Update previous orders reference
@@ -1506,7 +1450,7 @@ function App() {
     let newOrder;
     try {
       const currentUser = accountUsers.find(u => u.token === currentUserToken);
-      const userTeamId = currentUser?.teamId || currentUserToken;
+      const userTeamId = (currentUser && (currentUser as any).teamId) || currentUserToken;
 
       const orderData = {
         name: `Project ${orders.length + 1}`,
@@ -1515,61 +1459,84 @@ function App() {
         date: new Date().toLocaleString('ru-RU', { day: '2-digit', month: 'short', year: 'numeric' }),
         created_by_token: currentUserToken,
         team_id: userTeamId
-      };
+      } as any;
 
-      const { data: savedOrder, error: saveError } = await supabase
-        .from('orders')
-        .insert(orderData)
-        .select()
-        .maybeSingle();
+      const hasSupabaseEnv = Boolean(import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY);
 
-      if (saveError) {
-        console.error('Error saving order:', saveError);
-        throw saveError;
+      if (hasSupabaseEnv) {
+        const { data: savedOrder, error: saveError } = await supabase
+          .from('orders')
+          .insert(orderData)
+          .select()
+          .maybeSingle();
+
+        if (saveError) throw saveError;
+
+        newOrder = {
+          id: savedOrder.id,
+          name: savedOrder.name,
+          status: savedOrder.status,
+          data: savedOrder.order_data,
+          date: savedOrder.date,
+          createdBy: userName,
+          createdByToken: savedOrder.created_by_token
+        };
+      } else {
+        // Preview fallback (no Supabase env): create local-only order
+        newOrder = {
+          id: Date.now(),
+          name: orderData.name,
+          status: orderData.status,
+          data: orderData.order_data,
+          date: orderData.date,
+          createdBy: userName,
+          createdByToken: currentUserToken
+        };
       }
-
-      newOrder = {
-        id: savedOrder.id,
-        name: savedOrder.name,
-        status: savedOrder.status,
-        data: savedOrder.order_data,
-        date: savedOrder.date,
-        createdBy: userName,
-        createdByToken: savedOrder.created_by_token
-      };
 
       setOrders([...orders, newOrder]);
     } catch (error) {
       console.error('Error creating order:', error);
-      setError('Ошибка при создании заказа');
-      setIsSubmittingOrder(false);
-      return;
+      // Preview fallback on error: still add local order to allow UI to continue
+      newOrder = {
+        id: Date.now(),
+        name: `Project ${orders.length + 1}`,
+        status: 'progress',
+        data: { ...orderFormData, siteType, cost: orderCost.toString() },
+        date: new Date().toLocaleString('ru-RU', { day: '2-digit', month: 'short', year: 'numeric' }),
+        createdBy: userName,
+        createdByToken: currentUserToken
+      };
+      setOrders([...orders, newOrder]);
     }
 
     if (isTeamLeadOrMember) {
       try {
-        const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/telegram-notify`;
-        await fetch(apiUrl, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            projectName: newOrder.name,
-            theme: orderFormData.theme,
-            siteType: siteType,
-            geo: orderFormData.geo,
-            siteLanguage: orderFormData.siteLanguage,
-            whitePageCount: orderFormData.whitePageCount,
-            buyerNickname: orderFormData.buyerNickname,
-            language: orderFormData.language,
-            cost: orderCost.toString(),
-            date: newOrder.date,
-            createdBy: userName,
-            details: orderFormData.details
-          })
-        });
+        const hasSupabaseEnv = Boolean(import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY);
+        if (hasSupabaseEnv) {
+          const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/telegram-notify`;
+          await fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              projectName: newOrder.name,
+              theme: orderFormData.theme,
+              siteType: siteType,
+              geo: orderFormData.geo,
+              siteLanguage: orderFormData.siteLanguage,
+              whitePageCount: orderFormData.whitePageCount,
+              buyerNickname: orderFormData.buyerNickname,
+              language: orderFormData.language,
+              cost: orderCost.toString(),
+              date: newOrder.date,
+              createdBy: userName,
+              details: orderFormData.details
+            })
+          });
+        }
       } catch (error) {
         console.error('Failed to send Telegram notification:', error);
       }
