@@ -28,6 +28,7 @@ function App() {
   const [showAvatarUploadModal, setShowAvatarUploadModal] = useState(false);
   const [profileTab, setProfileTab] = useState<ProfileTab>('profile');
   const [userName, setUserName] = useState('');
+  const [userNickname, setUserNickname] = useState('');
   const [allowedIP, setAllowedIP] = useState('');
   const [showWalletModal, setShowWalletModal] = useState(false);
   const [walletTab, setWalletTab] = useState<WalletTab>('purchase');
@@ -744,7 +745,7 @@ function App() {
   const handleSaveProfile = async () => {
     if ((isTeamMember && currentUserToken.startsWith('tm_')) || currentUserToken.startsWith('tl_') || currentUserToken.startsWith('lead_')) {
       setAccountUsers(accountUsers.map(user =>
-        user.token === currentUserToken ? { ...user, name: userName, nickname: userName } : user
+        user.token === currentUserToken ? { ...user, name: userName, nickname: userNickname || userName } : user
       ));
 
       setOrders(orders.map(order =>
@@ -755,7 +756,7 @@ function App() {
     try {
       await supabase
         .from('users')
-        .update({ name: userName, nickname: userName, updated_at: new Date().toISOString() })
+        .update({ name: userName, nickname: userNickname || userName, updated_at: new Date().toISOString() })
         .eq('token', currentUserToken);
     } catch (_) {}
     setShowSaveSuccess(true);
@@ -1075,8 +1076,9 @@ function App() {
 
       const userTeamId = userData.team_id || userData.token;
 
-      // Sync UI name/avatar from DB on refresh
+      // Sync UI name/nickname/avatar from DB on refresh
       if (userData.name) setUserName(userData.name);
+      if (userData.nickname) setUserNickname(userData.nickname);
       if (userData.avatar) setUserAvatar(userData.avatar);
 
       let ordersData;
@@ -3555,6 +3557,17 @@ function App() {
                       value={userName}
                       onChange={(e) => setUserName(e.target.value)}
                       placeholder={t.enterName}
+                      className="w-full bg-slate-700/50 border border-slate-600/50 rounded-lg px-4 py-3 text-white placeholder-slate-400"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-white text-sm font-medium mb-2">Никнейм</label>
+                    <input
+                      type="text"
+                      value={userNickname}
+                      onChange={(e) => setUserNickname(e.target.value)}
+                      placeholder="Введите никнейм"
                       className="w-full bg-slate-700/50 border border-slate-600/50 rounded-lg px-4 py-3 text-white placeholder-slate-400"
                     />
                   </div>
