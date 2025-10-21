@@ -75,21 +75,45 @@ export class Notifications {
   }
 
   getList(orders: any[]): any[] {
-    return orders.filter(order => {
+    console.log('[Notifications] getList called with orders:', orders);
+    console.log('[Notifications] role:', this.role);
+    console.log('[Notifications] currentUserToken:', this.currentUserToken);
+
+    const filtered = orders.filter(order => {
+      console.log(`[Notifications] Processing order ${order.id}:`, {
+        status: order.status,
+        createdByToken: order.createdByToken,
+        viewedBefore: this.viewedOrderIds.has(order.id)
+      });
+
       if (this.viewedOrderIds.has(order.id)) {
+        console.log(`[Notifications] Order ${order.id} already viewed, skipping`);
         return false;
       }
 
       if (this.role === 'admin') {
-        return order.status === 'в процессе' || order.status === 'pending' || order.status === 'progress';
+        const result = order.status === 'в процессе' || order.status === 'pending' || order.status === 'progress';
+        console.log(`[Notifications] Admin check for order ${order.id}:`, result);
+        return result;
       }
 
       const teamTokens = this.getTeamTokens();
+      console.log('[Notifications] teamTokens:', teamTokens);
+
       const isMyTeamOrder = teamTokens.includes(order.createdByToken);
       const isCompleted = order.status === 'отправлен' || order.status === 'sent' || order.status === 'completed';
 
+      console.log(`[Notifications] Team leader check for order ${order.id}:`, {
+        isMyTeamOrder,
+        isCompleted,
+        willShow: isMyTeamOrder && isCompleted
+      });
+
       return isMyTeamOrder && isCompleted;
     });
+
+    console.log('[Notifications] Filtered orders:', filtered);
+    return filtered;
   }
 
   async createForUser(params: {
