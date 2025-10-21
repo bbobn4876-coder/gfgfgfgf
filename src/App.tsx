@@ -3561,16 +3561,6 @@ function App() {
                     />
                   </div>
 
-                  <div>
-                    <input
-                      type="text"
-                      value={userNickname}
-                      onChange={(e) => setUserNickname(e.target.value)}
-                      placeholder="Введите никнейм"
-                      className="w-full bg-slate-700/50 border border-slate-600/50 rounded-lg px-4 py-3 text-white placeholder-slate-400"
-                    />
-                  </div>
-
                   {/* Success Message */}
                   {showSaveSuccess && (
                     <div className="flex items-center gap-2 p-3 bg-green-500/20 border border-green-500/50 rounded-lg">
