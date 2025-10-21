@@ -1653,10 +1653,12 @@ function App() {
     }, 3000);
   };
 
-  const renderCreateOrderPage = () => (
-    <div className="flex-1 p-4 overflow-hidden">
-      <div className="max-w-4xl mx-auto h-full flex flex-col">
-        <div className="grid grid-cols-3 gap-3 mb-4">
+  const renderCreateOrderPage = () => {
+    try {
+      return (
+        <div className="flex-1 p-4 overflow-hidden">
+          <div className="max-w-4xl mx-auto h-full flex flex-col">
+            <div className="grid grid-cols-3 gap-3 mb-4">
           <div>
             <label className="block text-white text-xs font-medium mb-1.5">{t.siteTheme}</label>
             <input
@@ -1775,7 +1777,21 @@ function App() {
         </button>
       </div>
     </div>
-  );
+      );
+    } catch (error) {
+      console.error('[renderCreateOrderPage] Error:', error);
+      return (
+        <div className="flex-1 p-4">
+          <div className="max-w-4xl mx-auto">
+            <div className="bg-red-900/30 border border-red-500 rounded-lg p-4 text-white">
+              <h3 className="font-bold mb-2">Ошибка загрузки страницы</h3>
+              <p className="text-sm">{String(error)}</p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+  };
 
   const renderOrdersPage = () => {
     const filteredProjects = orders.filter(project => {
