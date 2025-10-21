@@ -1333,11 +1333,13 @@ function App() {
         await loadUserDataFromDB(token);
         isInitialLoadRef.current = true;
       } else if (token.startsWith('lead_')) {
-        const user = accountUsers.find(u => u.token === token);
-        if (user) {
-          setAccountUsers(accountUsers.map(u =>
-            u.token === token ? { ...u, isOnline: true } : u
-          ));
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('*')
+          .eq('token', token)
+          .maybeSingle();
+
+        if (userData) {
           setIsLoggedIn(true);
           setShowModal(false);
           setIsAdmin(false);
@@ -1346,13 +1348,16 @@ function App() {
           hasPlayedLoginSoundRef.current = false;
           await loadUserDataFromDB(token);
 
-          const teamMembers = accountUsers.filter(u => u.parentToken === token);
+          const { data: teamMembers } = await supabase
+            .from('users')
+            .select('*')
+            .eq('parent_token', token);
 
-          const totalAdded = teamMembers.reduce((sum, member) => sum + (member.tokensAdded || 0), 0) + (user.tokensAdded || 0);
-          const totalSpent = teamMembers.reduce((sum, member) => sum + (member.tokensSpent || 0), 0) + (user.tokensSpent || 0);
+          const totalAdded = (teamMembers?.reduce((sum, member) => sum + Number(member.tokens_added || 0), 0) || 0) + Number(userData.tokens_added || 0);
+          const totalSpent = (teamMembers?.reduce((sum, member) => sum + Number(member.tokens_spent || 0), 0) || 0) + Number(userData.tokens_spent || 0);
 
           setTokenBalance(totalAdded - totalSpent);
-          setUserTokensAdded(user.tokensAdded || 0);
+          setUserTokensAdded(Number(userData.tokens_added || 0));
         } else {
           setError('Invalid team leader token. Please try again.');
         }
@@ -1424,11 +1429,13 @@ function App() {
           }
         }
       } else if (token.startsWith('tm_')) {
-        const user = accountUsers.find(u => u.token === token);
-        if (user) {
-          setAccountUsers(accountUsers.map(u =>
-            u.token === token ? { ...u, isOnline: true } : u
-          ));
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('*')
+          .eq('token', token)
+          .maybeSingle();
+
+        if (userData) {
           setIsLoggedIn(true);
           setShowModal(false);
           setIsAdmin(false);
@@ -1437,14 +1444,22 @@ function App() {
           hasPlayedLoginSoundRef.current = false;
           await loadUserDataFromDB(token);
 
-          const teamLeader = accountUsers.find(u => u.token === user.parentToken);
-          const teamMembers = accountUsers.filter(u => u.parentToken === user.parentToken);
+          const { data: teamLeader } = await supabase
+            .from('users')
+            .select('*')
+            .eq('token', userData.parent_token || '')
+            .maybeSingle();
 
-          const totalAdded = teamMembers.reduce((sum, member) => sum + (member.tokensAdded || 0), 0) + (teamLeader?.tokensAdded || 0);
-          const totalSpent = teamMembers.reduce((sum, member) => sum + (member.tokensSpent || 0), 0) + (teamLeader?.tokensSpent || 0);
+          const { data: teamMembers } = await supabase
+            .from('users')
+            .select('*')
+            .eq('parent_token', userData.parent_token || '');
+
+          const totalAdded = (teamMembers?.reduce((sum, member) => sum + Number(member.tokens_added || 0), 0) || 0) + Number(teamLeader?.tokens_added || 0);
+          const totalSpent = (teamMembers?.reduce((sum, member) => sum + Number(member.tokens_spent || 0), 0) || 0) + Number(teamLeader?.tokens_spent || 0);
 
           setTokenBalance(totalAdded - totalSpent);
-          setUserTokensAdded(user.tokensAdded || 0);
+          setUserTokensAdded(Number(userData.tokens_added || 0));
         } else {
           setError('Invalid token. Please try again.');
         }
