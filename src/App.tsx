@@ -3167,6 +3167,11 @@ function App() {
             <div className="flex items-center gap-4">
             <button
               onClick={async () => {
+                console.log('[App] Opening notification modal');
+                console.log('[App] Current orders:', orders);
+                console.log('[App] isAdmin:', isAdmin);
+                console.log('[App] isTeamMember:', isTeamMember);
+                console.log('[App] currentUserToken:', currentUserToken);
                 setShowNotificationModal(true);
                 await notifications.openBell(orders);
               }}
