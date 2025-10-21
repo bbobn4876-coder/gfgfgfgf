@@ -1489,8 +1489,13 @@ function App() {
 
     let newOrder;
     try {
-      const currentUser = accountUsers.find(u => u.token === currentUserToken);
-      const userTeamId = (currentUser && (currentUser as any).teamId) || currentUserToken;
+      const { data: currentUserData } = await supabase
+        .from('users')
+        .select('team_id')
+        .eq('token', currentUserToken)
+        .maybeSingle();
+
+      const userTeamId = currentUserData?.team_id || currentUserToken;
 
       const orderData = {
         name: `Project ${orders.length + 1}`,
