@@ -1153,13 +1153,34 @@ function App() {
       try {
         const { data: userData } = await supabase
           .from('users')
-          .select('name, avatar')
+          .select('name, avatar, role')
           .eq('token', userToken)
           .maybeSingle();
 
         if (userData) {
-          if (userData.name) setUserName(userData.name);
-          if (userData.avatar) setUserAvatar(userData.avatar);
+          if (userData.name) {
+            setUserName(userData.name);
+          } else {
+            if (userData.role === 'admin') {
+              setUserName('Admin');
+            } else if (userData.role === 'team-leader') {
+              setUserName('TM');
+            } else {
+              setUserName('User');
+            }
+          }
+
+          if (userData.avatar) {
+            setUserAvatar(userData.avatar);
+          } else {
+            if (userData.role === 'admin') {
+              setUserAvatar('https://cdn.discordapp.com/attachments/1424455923136467024/1425076074789867552/Group_549_1_1.png?ex=68e64504&is=68e4f384&hm=b91133555c589c2451ea8d9b6edeec55f4a75fe509edd71c904f6c337c8debf0&');
+            } else if (userData.role === 'team-leader') {
+              setUserAvatar('https://cdn.discordapp.com/attachments/1424455923136467024/1425127993398788186/Group_622_2.png?ex=68f0589f&is=68ef071f&hm=2485eeb9d98af767bc463f924a069871aa3013bb1405b35abde34cb9bc3e76b3&');
+            } else {
+              setUserAvatar('U');
+            }
+          }
         }
       } catch (error) {
         console.error('Error loading user data:', error);
@@ -1200,8 +1221,6 @@ function App() {
 
           setTokenBalance(totalAdded - totalSpent);
           setUserTokensAdded(teamLeader.tokensAdded || 0);
-          setUserName('TM');
-          setUserAvatar(teamLeader.avatar || 'https://cdn.discordapp.com/attachments/1424455923136467024/1425127993398788186/Group_622_2.png?ex=68f0589f&is=68ef071f&hm=2485eeb9d98af767bc463f924a069871aa3013bb1405b35abde34cb9bc3e76b3&');
         }
         setIsLoggedIn(true);
         setShowModal(false);
@@ -1292,8 +1311,6 @@ function App() {
         setIsTeamMember(false);
         setCurrentPage('admin-panel');
         setCurrentUserToken(token);
-        setUserName('Admin');
-        setUserAvatar('https://cdn.discordapp.com/attachments/1424455923136467024/1425076074789867552/Group_549_1_1.png?ex=68e64504&is=68e4f384&hm=b91133555c589c2451ea8d9b6edeec55f4a75fe509edd71c904f6c337c8debf0&');
         await loadUserDataFromDB(token);
         isInitialLoadRef.current = true;
       } else if (token.startsWith('lead_')) {
@@ -1306,10 +1323,8 @@ function App() {
           setShowModal(false);
           setIsAdmin(false);
           setIsTeamMember(false);
-          setUserAvatar(user.avatar || 'https://cdn.discordapp.com/attachments/1424455923136467024/1425127993398788186/Group_622_2.png?ex=68f0589f&is=68ef071f&hm=2485eeb9d98af767bc463f924a069871aa3013bb1405b35abde34cb9bc3e76b3&');
           setCurrentUserToken(token);
           hasPlayedLoginSoundRef.current = false;
-          setUserName(user.role === 'team-leader' ? 'TM' : 'User');
           await loadUserDataFromDB(token);
 
           const teamMembers = accountUsers.filter(u => u.parentToken === token);
@@ -1389,9 +1404,7 @@ function App() {
           setIsAdmin(false);
           setIsTeamMember(true);
           setCurrentUserToken(token);
-          setUserName('User');
           hasPlayedLoginSoundRef.current = false;
-          setUserAvatar(user.avatar || 'U');
           await loadUserDataFromDB(token);
 
           const teamLeader = accountUsers.find(u => u.token === user.parentToken);
