@@ -3328,6 +3328,17 @@ function App() {
                     });
                     setOrders(updatedOrders);
 
+                    (async () => {
+                      try {
+                        await supabase
+                          .from('orders')
+                          .update({ status: 'completed' })
+                          .eq('id', selectedProject.id);
+                      } catch (error) {
+                        console.error('Failed to update order status in database:', error);
+                      }
+                    })();
+
                     if (selectedProject.createdByToken) {
                       setAccountUsers(accountUsers.map(user => {
                         if (user.token === selectedProject.createdByToken) {
