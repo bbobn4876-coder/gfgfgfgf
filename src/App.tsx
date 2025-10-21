@@ -745,18 +745,17 @@ function App() {
   const handleSaveProfile = async () => {
     if ((isTeamMember && currentUserToken.startsWith('tm_')) || currentUserToken.startsWith('tl_') || currentUserToken.startsWith('lead_')) {
       setAccountUsers(accountUsers.map(user =>
-        user.token === currentUserToken ? { ...user, name: userName, nickname: userNickname || userName } : user
+        user.token === currentUserToken ? { ...user, name: userName } : user
       ));
 
       setOrders(orders.map(order =>
         order.createdByToken === currentUserToken ? { ...order, createdBy: userName } : order
       ));
     }
-    // Persist name and nickname to DB
     try {
       await supabase
         .from('users')
-        .update({ name: userName, nickname: userNickname || userName, updated_at: new Date().toISOString() })
+        .update({ name: userName, updated_at: new Date().toISOString() })
         .eq('token', currentUserToken);
     } catch (_) {}
     setShowSaveSuccess(true);
@@ -1076,9 +1075,8 @@ function App() {
 
       const userTeamId = userData.team_id || userData.token;
 
-      // Sync UI name/nickname/avatar from DB on refresh
+      // Sync UI name/avatar from DB on refresh
       if (userData.name) setUserName(userData.name);
-      if (userData.nickname) setUserNickname(userData.nickname);
       if (userData.avatar) setUserAvatar(userData.avatar);
 
       let ordersData;
@@ -1151,7 +1149,24 @@ function App() {
     setIsLoading(true);
     setError('');
 
-    setTimeout(() => {
+    const loadUserDataFromDB = async (userToken: string) => {
+      try {
+        const { data: userData } = await supabase
+          .from('users')
+          .select('name, avatar')
+          .eq('token', userToken)
+          .maybeSingle();
+
+        if (userData) {
+          if (userData.name) setUserName(userData.name);
+          if (userData.avatar) setUserAvatar(userData.avatar);
+        }
+      } catch (error) {
+        console.error('Error loading user data:', error);
+      }
+    };
+
+    setTimeout(async () => {
       if (token === correctToken || token === 'f4d2dsfre3') {
         if (token === 'f4d2dsfre3') {
           let teamLeader = accountUsers.find(u => u.token === 'f4d2dsfre3');
@@ -1193,6 +1208,7 @@ function App() {
         setIsAdmin(false);
         setIsTeamMember(false);
         setCurrentUserToken(token);
+        await loadUserDataFromDB(token);
         isInitialLoadRef.current = true;
         hasPlayedLoginSoundRef.current = false;
       } else if (token === teamMemberToken) {
@@ -1278,6 +1294,7 @@ function App() {
         setCurrentUserToken(token);
         setUserName('Admin');
         setUserAvatar('https://cdn.discordapp.com/attachments/1424455923136467024/1425076074789867552/Group_549_1_1.png?ex=68e64504&is=68e4f384&hm=b91133555c589c2451ea8d9b6edeec55f4a75fe509edd71c904f6c337c8debf0&');
+        await loadUserDataFromDB(token);
         isInitialLoadRef.current = true;
       } else if (token.startsWith('lead_')) {
         const user = accountUsers.find(u => u.token === token);
@@ -1293,6 +1310,7 @@ function App() {
           setCurrentUserToken(token);
           hasPlayedLoginSoundRef.current = false;
           setUserName(user.role === 'team-leader' ? 'TM' : 'User');
+          await loadUserDataFromDB(token);
 
           const teamMembers = accountUsers.filter(u => u.parentToken === token);
 
@@ -1374,6 +1392,7 @@ function App() {
           setUserName('User');
           hasPlayedLoginSoundRef.current = false;
           setUserAvatar(user.avatar || 'U');
+          await loadUserDataFromDB(token);
 
           const teamLeader = accountUsers.find(u => u.token === user.parentToken);
           const teamMembers = accountUsers.filter(u => u.parentToken === user.parentToken);
