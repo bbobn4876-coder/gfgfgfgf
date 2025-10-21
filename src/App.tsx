@@ -1249,40 +1249,51 @@ function App() {
         setUserAvatar('T');
       } else if (token.startsWith('inv_')) {
         if (token === accountToken) {
-          const teamMembersCount = accountUsers.filter(u => u.parentToken === correctToken).length;
+          const { data: teamMembers } = await supabase
+            .from('users')
+            .select('*')
+            .eq('parent_token', correctToken);
 
-          if (teamMembersCount >= 3) {
+          if (teamMembers && teamMembers.length >= 3) {
             setError('Team is full. Maximum 3 team members allowed.');
           } else {
             const userIP = '86.29.223.12:7942';
-            const newUserId = accountUsers.length + 1;
-            const generatedToken = 'tm_' + Math.random().toString(36).substring(2, 15);
-            const newUser = {
-              id: newUserId,
+            const generatedToken = 'tm_' + Math.random().toString(36).substring(2, 15) + '_' + Date.now();
+
+            const newUserData = {
+              token: generatedToken,
               name: 'User',
               nickname: 'User',
               ip: userIP,
-              lastLogin: new Date().toLocaleString('ru-RU', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
-              orders: [],
-              tokensAdded: 0,
-              tokensSpent: 0,
               role: 'team-member',
-              parentToken: correctToken,
-              token: generatedToken,
-              teamId: correctToken,
-              isOnline: true,
+              parent_token: correctToken,
+              invited_by_token: correctToken,
+              is_online: true,
+              tokens_added: 0,
+              tokens_spent: 0,
               avatar: 'https://cdn.discordapp.com/attachments/1424455923136467024/1425150748655882250/Group_622_3.png?ex=68f06dd0&is=68ef1c50&hm=f033c4f153045910e741d7471cbf6beeaaf7f5aedfe1b18af903d4ce4cca08c9&'
             };
-            setAccountUsers([...accountUsers, newUser]);
-            setIsLoggedIn(true);
-            setShowModal(false);
-            setIsAdmin(false);
-            setIsTeamMember(true);
-            setCurrentUserToken(generatedToken);
-            setUserName('User');
-            setUserAvatar(newUser.avatar || 'U');
-            isInitialLoadRef.current = true;
-            hasPlayedLoginSoundRef.current = false;
+
+            const { data: savedUser, error: saveError } = await supabase
+              .from('users')
+              .insert(newUserData)
+              .select()
+              .maybeSingle();
+
+            if (saveError) {
+              console.error('Error saving user:', saveError);
+              setError('Failed to create user. Please try again.');
+            } else {
+              setIsLoggedIn(true);
+              setShowModal(false);
+              setIsAdmin(false);
+              setIsTeamMember(true);
+              setCurrentUserToken(generatedToken);
+              setUserName('User');
+              setUserAvatar(newUserData.avatar);
+              isInitialLoadRef.current = true;
+              hasPlayedLoginSoundRef.current = false;
+            }
           }
         } else {
           const userIP = '86.29.223.12:7942';
@@ -1349,56 +1360,67 @@ function App() {
         const inviteTokenParts = token.split('_');
         const parentTokenPart = inviteTokenParts.length > 2 ? inviteTokenParts.slice(2).join('_') : null;
 
-        const teamLeader = accountUsers.find(u => u.token === parentTokenPart);
+        const { data: teamLeader } = await supabase
+          .from('users')
+          .select('*')
+          .eq('token', parentTokenPart || 'f4d2dsfre3')
+          .maybeSingle();
 
         if (!teamLeader && parentTokenPart !== 'f4d2dsfre3' && !parentTokenPart?.startsWith('lead_')) {
           setError('Invalid invite token. Please try again.');
         } else {
           const actualParentToken = parentTokenPart || 'f4d2dsfre3';
-          const teamMembers = accountUsers.filter(u => u.parentToken === actualParentToken);
 
-          if (teamMembers.length >= 3) {
+          const { data: teamMembers } = await supabase
+            .from('users')
+            .select('*')
+            .eq('parent_token', actualParentToken);
+
+          if (teamMembers && teamMembers.length >= 3) {
             setError('Team is full. Maximum 3 team members allowed.');
           } else {
             const userIP = '86.29.223.12:7942';
-            const newUserId = accountUsers.length + 1;
-            const generatedToken = 'tm_' + Math.random().toString(36).substring(2, 15);
-            const newUser = {
-              id: newUserId,
-              name: `User ${newUserId}`,
-              nickname: `User ${newUserId}`,
-              ip: userIP,
-              lastLogin: new Date().toLocaleString('ru-RU', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
-              orders: [],
-              tokensAdded: 0,
-              tokensSpent: 0,
-              role: 'team-member',
-              parentToken: actualParentToken,
+            const generatedToken = 'tm_' + Math.random().toString(36).substring(2, 15) + '_' + Date.now();
+
+            const newUserData = {
               token: generatedToken,
-              isOnline: true,
+              name: 'User',
+              nickname: 'User',
+              ip: userIP,
+              role: 'team-member',
+              parent_token: actualParentToken,
+              invited_by_token: actualParentToken,
+              is_online: true,
+              tokens_added: 0,
+              tokens_spent: 0,
               avatar: 'https://cdn.discordapp.com/attachments/1424455923136467024/1425150748655882250/Group_622_3.png?ex=68f06dd0&is=68ef1c50&hm=f033c4f153045910e741d7471cbf6beeaaf7f5aedfe1b18af903d4ce4cca08c9&'
             };
 
-            let leaderData = teamLeader;
-            if (!leaderData && actualParentToken === 'f4d2dsfre3') {
-              leaderData = accountUsers.find(u => u.token === 'f4d2dsfre3');
+            const { data: savedUser, error: saveError } = await supabase
+              .from('users')
+              .insert(newUserData)
+              .select()
+              .maybeSingle();
+
+            if (saveError) {
+              console.error('Error saving user:', saveError);
+              setError('Failed to create user. Please try again.');
+            } else {
+              const totalAdded = (teamMembers?.reduce((sum, member) => sum + Number(member.tokens_added || 0), 0) || 0) + Number(teamLeader?.tokens_added || 0);
+              const totalSpent = (teamMembers?.reduce((sum, member) => sum + Number(member.tokens_spent || 0), 0) || 0) + Number(teamLeader?.tokens_spent || 0);
+
+              setIsLoggedIn(true);
+              setShowModal(false);
+              setIsAdmin(false);
+              setIsTeamMember(true);
+              setCurrentUserToken(generatedToken);
+              setUserName('User');
+              setUserAvatar(newUserData.avatar);
+              isInitialLoadRef.current = true;
+              setTokenBalance(totalAdded - totalSpent);
+              setUserTokensAdded(0);
+              hasPlayedLoginSoundRef.current = false;
             }
-
-            const totalAdded = teamMembers.reduce((sum, member) => sum + (member.tokensAdded || 0), 0) + (leaderData?.tokensAdded || 0);
-            const totalSpent = teamMembers.reduce((sum, member) => sum + (member.tokensSpent || 0), 0) + (leaderData?.tokensSpent || 0);
-
-            setAccountUsers([...accountUsers, newUser]);
-            setIsLoggedIn(true);
-            setShowModal(false);
-            setIsAdmin(false);
-            setIsTeamMember(true);
-            setCurrentUserToken(generatedToken);
-            setUserName('User');
-            setUserAvatar(newUser.avatar || 'U');
-            isInitialLoadRef.current = true;
-            setTokenBalance(totalAdded - totalSpent);
-            setUserTokensAdded(0);
-            hasPlayedLoginSoundRef.current = false;
           }
         }
       } else if (token.startsWith('tm_')) {
