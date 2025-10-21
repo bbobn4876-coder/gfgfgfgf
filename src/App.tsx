@@ -635,8 +635,13 @@ function App() {
       if (!isLoggedIn) return;
       if (!notifications) return;
       await notifications.hydrateFromDatabase();
+
+      if (!hasPlayedLoginSoundRef.current && notifications.hasUnviewedNotifications(orders)) {
+        orderCreatedAudio.play().catch(e => console.log('Audio play failed:', e));
+        hasPlayedLoginSoundRef.current = true;
+      }
     })();
-  }, [isLoggedIn, notifications]);
+  }, [isLoggedIn, notifications, orders]);
 
   // Close order filter dropdown when clicking outside
   useEffect(() => {
@@ -1102,10 +1107,13 @@ function App() {
           id: order.id,
           name: order.name || `Project ${order.id}`,
           status: order.status,
-          data: order.data || {},
+          data: order.order_data || {},
           date: order.date || new Date(order.created_at).toLocaleString('ru-RU', { day: '2-digit', month: 'short', year: 'numeric' }),
           createdBy: order.created_by || 'Unknown',
-          createdByToken: order.created_by_token || ''
+          createdByToken: order.created_by_token || '',
+          theme: (order.order_data as any)?.theme || '',
+          whitePageCount: (order.order_data as any)?.whitePageCount || 0,
+          buyerNickname: (order.order_data as any)?.buyerNickname || ''
         }));
         setOrders(formattedOrders);
       }
@@ -3873,7 +3881,7 @@ function App() {
                               <p className="text-slate-400 text-xs mt-2">{order.date}</p>
                             </div>
                             <div className="text-right">
-                              <p className="text-green-400 font-semibold">{order.cost} TOKEN</p>
+                              <p className="text-green-400 font-semibold">{parseFloat(order.data?.cost || '0').toFixed(2)} TOKEN</p>
                             </div>
                           </div>
                         </div>
