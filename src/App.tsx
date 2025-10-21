@@ -3872,7 +3872,9 @@ function App() {
                     </div>
                   ) : (
                     <div className="space-y-3 max-h-96 overflow-y-auto">
-                      {orders.map((order) => (
+                      {orders.map((order) => {
+                        const orderData = order.order_data || order.data || {};
+                        return (
                         <div key={order.id} className="p-4 bg-slate-700/50 border border-slate-600/50 rounded-xl hover:bg-slate-700/70 transition-colors">
                           <div className="flex items-start justify-between">
                             <div className="flex-1">
@@ -3886,17 +3888,17 @@ function App() {
                                   {order.status === 'completed' ? t.statusCompleted : order.status === 'in-progress' ? t.inProgress : t.statusPending}
                                 </span>
                               </div>
-                              <p className="text-slate-300 text-sm mb-1">{order.theme}</p>
-                              <p className="text-slate-400 text-xs">White Page: {order.whitePageCount}</p>
-                              <p className="text-slate-400 text-xs">{t.buyer}: {order.buyerNickname || t.notSpecified}</p>
-                              <p className="text-slate-400 text-xs mt-2">{order.date}</p>
+                              <p className="text-slate-300 text-sm mb-1">{orderData.theme}</p>
+                              <p className="text-slate-400 text-xs">White Page: {orderData.whitePageCount}</p>
+                              <p className="text-slate-400 text-xs">{t.buyer}: {orderData.buyerNickname || t.notSpecified}</p>
+                              <p className="text-slate-400 text-xs mt-2">{order.date || order.created_at}</p>
                             </div>
                             <div className="text-right">
-                              <p className="text-green-400 font-semibold">{parseFloat(order.data?.cost || '0').toFixed(2)} TOKEN</p>
+                              <p className="text-green-400 font-semibold">{parseFloat(orderData.cost || '0').toFixed(2)} TOKEN</p>
                             </div>
                           </div>
                         </div>
-                      ))}
+                      )})}
                     </div>
                   )}
                 </div>
@@ -3912,7 +3914,9 @@ function App() {
                     </div>
                   ) : (
                     <div className="space-y-3 max-h-96 overflow-y-auto">
-                      {notifications.getList(orders).map((order) => (
+                      {notifications.getList(orders).map((order) => {
+                        const orderData = order.order_data || order.data || {};
+                        return (
                         <div key={order.id} className="p-4 bg-slate-700/50 border border-slate-600/50 rounded-xl hover:bg-slate-700/70 transition-colors">
                           <div className="flex items-start justify-between">
                             <div className="flex-1">
@@ -3922,10 +3926,10 @@ function App() {
                                   Выполнен
                                 </span>
                               </div>
-                              <p className="text-slate-300 text-sm mb-1">{order.theme}</p>
-                              <p className="text-slate-400 text-xs">White Page: {order.whitePageCount}</p>
-                              <p className="text-slate-400 text-xs">{t.buyer}: {order.buyerNickname || t.notSpecified}</p>
-                              <p className="text-slate-400 text-xs mt-2">{order.date}</p>
+                              <p className="text-slate-300 text-sm mb-1">{orderData.theme}</p>
+                              <p className="text-slate-400 text-xs">White Page: {orderData.whitePageCount}</p>
+                              <p className="text-slate-400 text-xs">{t.buyer}: {orderData.buyerNickname || t.notSpecified}</p>
+                              <p className="text-slate-400 text-xs mt-2">{order.date || order.created_at}</p>
                             </div>
                             <div className="text-right">
                               <button
@@ -3941,7 +3945,7 @@ function App() {
                             </div>
                           </div>
                         </div>
-                      ))}
+                      )})}
                     </div>
                   )}
                 </div>
