@@ -3562,7 +3562,6 @@ function App() {
                   </div>
 
                   <div>
-                    <label className="block text-white text-sm font-medium mb-2">Никнейм</label>
                     <input
                       type="text"
                       value={userNickname}
